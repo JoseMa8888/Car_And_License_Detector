@@ -22,3 +22,6 @@ class Constants:
     FERRARI_YMAX = 357
     VELOCITY = 10
     ANGLE = 180  
+    CAR_COORDINATES = (1250,67,500,60)
+    LICENSE1_COORDINATES = (730,67,500,60)
+    
