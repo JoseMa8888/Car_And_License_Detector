@@ -7,6 +7,7 @@ class BaseWorker(ABC):
         self.frame_queue = mp.Queue(maxsize=1)
         self.results_queue = mp.Queue(maxsize=1)
         self.process = None
+        self.stop_event = mp.Event()
 
     @abstractmethod
     def _worker_loop(self, frame_queue, results_queue):
@@ -24,6 +25,15 @@ class BaseWorker(ABC):
             target=self._worker_loop,
             args=(self.frame_queue, self.results_queue)
         )
+
+    def stop(self):
+        self.stop_event.set()
+        if self.process is not None:
+            self.process.join(timeout=2)
+            if self.process.is_alive():
+                # Si no salió limpio, lo matamos a la fuerza
+                self.process.terminate()
+                self.process.join()
 
     def activate_deamon(self):
         # This method activates the daemon

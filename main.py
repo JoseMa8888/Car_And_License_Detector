@@ -7,7 +7,7 @@ from update_parking_function import update_parking
 from typing import List, Dict, Tuple
 from GlobalConstants import Constants
 from CarWorker import CarWorker
-from LicenseWorker import LicenseWorker
+from LicensePlateDetector import LicensePlateDetector
 
 pygame.init()
 
@@ -47,13 +47,34 @@ def dibujar_boton(superficie, rect, texto, color_base, color_hover):
     superficie.blit(texto_render, (rect.x + 20, rect.y + 15))
  
 
-def create_rect_text(window, coordinates: Tuple[int], font, text: str = None,occupied_spots = None, license: bool = True):
+def create_rect_text(window, coordinates: Tuple[int], font, text: str = None,
+                     occupied_spots=None, license: bool = True, enter="Enter"):
     pygame.draw.rect(window, Constants.BRIGHT_RED, coordinates, border_radius=15)
     if license:
-        texto_render = font.render(f"Your license: {text}", True, Constants.WHITE)
+        texto_render = font.render(f"{enter} license:\n{text}", True, Constants.WHITE)
     else: 
-        texto_render = font1.render(f"Sitios libres: {20-len(occupied_spots)}/20", True, Constants.WHITE)
-    window.blit(texto_render, (coordinates[0]+10,coordinates[1]+10))
+        texto_render = font.render(f"Sitios libres: {20-len(occupied_spots)}/20", True, Constants.WHITE)
+    
+    # Ajustar posición para que no se corte al saltar de línea
+    lines = (f"{enter} license:", text) if license else (f"Sitios libres: {20-len(occupied_spots)}/20",)
+    y_offset = coordinates[1] + 10
+    for line in lines:
+        texto_render = font.render(line, True, Constants.WHITE)
+        window.blit(texto_render, (coordinates[0]+10, y_offset))
+        y_offset += font.get_linesize()
+
+
+
+def check_limit(limit, centers):
+    if centers:
+        i = 0
+        found = False
+        while not found and i < len(centers):
+            centerx, centery = centers[i]
+            found = ((limit[0] < centerx < limit[2]) and (limit[1] < centery < limit[3]))
+            i+=1
+        return found
+    return False
 
 
 def main(parking):
@@ -70,46 +91,38 @@ def main(parking):
     car_worker.activate_deamon()
     car_worker.start_process()
 
-    license_worker1 = LicenseWorker()
-    license_worker1.create_process()
-    license_worker1.activate_deamon()
-    license_worker1.start_process()
+    license_plate1 = LicensePlateDetector()
+    license_plate2 = LicensePlateDetector()
 
-    license_worker2 = LicenseWorker()
-    license_worker2.create_process()
-    license_worker2.activate_deamon()
-    license_worker2.start_process()
-    
     sitios_ocupados = None
-    texto_license = ""
+    texto_license1 = ""
+    texto_license2 = ""
     itera = 0
+    car_results = []
     x, y = 200, Constants.WIN_HEIGHT-120
     clock = pygame.time.Clock()
-    prev = np.zeros((Constants.Y2-Constants.Y1, Constants.X2-Constants.X1, 3))
-    prev = prev.astype(dtype="uint8")
-    diff_dif = 0
+
+    pygame.draw.rect(fondo, Constants.GREEN, (Constants.X1,Constants.Y1,Constants.X2-Constants.X1,Constants.Y2-Constants.Y1), 5)
+    pygame.draw.rect(fondo, Constants.GREEN, (Constants.Z1,Constants.W1,Constants.Z2-Constants.Z1,Constants.W2-Constants.W1), 5)
+
+    pygame.draw.rect(fondo, Constants.BRIGHT_RED, (Constants.SX1, Constants.SY1, Constants.SX2-Constants.SX1, Constants.SY2-Constants.SY1), 5) 
+    pygame.draw.rect(fondo, Constants.BRIGHT_RED, (Constants.SSX1, Constants.SSY1, Constants.SSX2-Constants.SSX1, Constants.SSY2-Constants.SSY1), 5) 
+                        
     
     while True:
         for evento in pygame.event.get():
-            if evento.type == pygame.quit:
-                license_worker1.put_frames(None)
-                license_worker2.put_frames(None)
-                car_worker.put_frames(None)
+            if evento.type == pygame.QUIT:
+                car_worker.stop()
                 pygame.quit()
                 sys.exit()
+
             if evento.type == pygame.MOUSEBUTTONDOWN and evento.button == 1:
                 if boton_rect.collidepoint(evento.pos):
-                    license_worker1.put_frames(None)
-                    license_worker2.put_frames(None)
-                    car_worker.put_framesl(None)
+                    car_worker.stop()
                     pygame.quit()
                     sys.exit()   
 
         ventana.blit(fondo, (0, 0))
-        pygame.draw.rect(ventana, 
-                         Constants.GREEN, 
-                         (Constants.X1,Constants.Y1,Constants.X2-Constants.X1,Constants.Y2-Constants.Y1), 
-                         5)
 
         # teclas presionadas
         teclas = pygame.key.get_pressed()
@@ -133,24 +146,28 @@ def main(parking):
         wind_piece = np.transpose(wind_piece, (1, 0, 2))
         wind_piece = cv2.cvtColor(wind_piece, cv2.COLOR_BGR2RGB)
         wind_piece_license1 = wind_piece[Constants.Y1:Constants.Y2,Constants.X1:Constants.X2]
-        diff = cv2.absdiff(prev, wind_piece_license1)
-        diff = np.sum(diff)
-        diff_dif = abs(diff - diff_dif)
-        if itera % 30 == 0 and license_worker1.frame_queue_empty() and diff_dif > 1000000:
-            license_worker1.put_frames(wind_piece_license1)
+        wind_piece_license2 = wind_piece[Constants.W1:Constants.W2,Constants.Z1:Constants.Z2]
         
-        if itera % 20 and car_worker.frame_queue_empty():  
+        if itera % 20 == 0 and check_limit((Constants.SX1,Constants.SY1,Constants.SX2,Constants.SY2),car_results):
+            license_text1, license_frame1 = license_plate1.get_license_plate(wind_piece_license1, enter=True)
+            if license_text1:
+                texto_license1 = license_text1
+
+        if itera % 30 == 0 and check_limit((Constants.SSX1,Constants.SSY1,Constants.SSX2,Constants.SSY2),car_results):
+            license_text2, license_frame2 = license_plate2.get_license_plate(wind_piece_license2, enter=False)
+            if license_text2:
+                texto_license2 = license_text2
+        
+        if itera % 20 == 0 and car_worker.frame_queue_empty():  
             car_worker.put_frames(wind_piece)
 
         if itera % 10 == 0 and not car_worker.results_queue_empty():
-            results = car_worker.get_results()
-            sitios_ocupados, parking = update_parking(results, parking)
+            car_results = car_worker.get_results()
+            sitios_ocupados, parking = update_parking(car_results, parking)
 
-        if itera % 10 == 0 and not license_worker1.results_queue_empty():
-            license_result = license_worker1.get_results()
-            texto_license = license_result
-        
-        create_rect_text(ventana, Constants.LICENSE1_COORDINATES, font1, text=texto_license) 
+        create_rect_text(ventana, Constants.LICENSE1_COORDINATES, font1, text=texto_license1) 
+        create_rect_text(ventana, Constants.LICENSE2_COORDINATES, font1, text=texto_license2) 
+
         if sitios_ocupados is not None:
             create_rect_text(ventana, Constants.CAR_COORDINATES, font1, occupied_spots=sitios_ocupados, license=False)
 
@@ -162,7 +179,6 @@ def main(parking):
             else:
                 pygame.draw.rect(ventana, Constants.RED, (value[0], value[1], value[-2], value[-1]), 5)
         
-        prev = wind_piece_license1
         # dibujar botón
         dibujar_boton(ventana, boton_rect, "Exit", Constants.RED, Constants.BRIGHT_RED)
         pygame.display.update()

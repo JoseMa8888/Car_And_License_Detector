@@ -32,7 +32,7 @@ class LicensePlateDetector():
             print(f"Error: {err}")
 
 
-    def get_license_plate(self, frame):
+    def get_license_plate(self, frame, enter=True):
         """
         params:
             frame: capture of a video frame.
@@ -41,7 +41,10 @@ class LicensePlateDetector():
         return:
             The result is the license plate text and the image of it 
         """
-        license_frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
+        if enter:
+            license_frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
+        else:
+            license_frame = cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
         results = self.__ocr_reader.readtext(license_frame)
         license_text = ""
         for (bbox, text, prob) in results:
