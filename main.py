@@ -8,6 +8,7 @@ from typing import List, Dict, Tuple
 from GlobalConstants import Constants
 from CarWorker import CarWorker
 from LicensePlateDetector import LicensePlateDetector
+import multiprocessing as mp
 
 pygame.init()
 
@@ -161,9 +162,12 @@ def main(parking):
         if itera % 20 == 0 and car_worker.frame_queue_empty():  
             car_worker.put_frames(wind_piece)
 
-        if itera % 10 == 0 and not car_worker.results_queue_empty():
+        if itera % 15 == 0 and not car_worker.results_queue_empty():
             car_results = car_worker.get_results()
             sitios_ocupados, parking = update_parking(car_results, parking)
+        
+        for center in car_results:
+            pygame.draw.circle(ventana, color=Constants.BRIGHT_RED, center=center, radius=2)
 
         create_rect_text(ventana, Constants.LICENSE1_COORDINATES, font1, text=texto_license1) 
         create_rect_text(ventana, Constants.LICENSE2_COORDINATES, font1, text=texto_license2) 
