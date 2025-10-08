@@ -6,64 +6,43 @@ import cv2
 from update_parking_function import update_parking
 from typing import List, Dict, Tuple
 from GlobalConstants import Constants
-from CarWorker import CarWorker
 from LicensePlateDetector import LicensePlateDetector
-import multiprocessing as mp
+from CarDetector import CarDetector
 
 pygame.init()
 
-font1 = pygame.font.SysFont(None, 60)
-parking: Dict[str, List[int]] = {
-    'A8': [37, 30, 463, 200, 1, 426, 170],
-    'A3': [36, 200, 465, 368, 1, 429, 168],
-    'B2': [33, 369, 466, 544, 1, 433, 175],
-    'C2': [35, 545, 468, 713, 1, 433, 168],
-    'D2': [36, 713, 471, 883, 1, 435, 170],
-    'E1': [35, 882, 475, 1063, 1, 440, 181],
-    'A1': [798, 192, 1218, 362, 1, 420, 170],
-    'A5': [800, 362, 1220, 544, 1, 420, 182],
-    'B3': [801, 543, 1220, 707, 1, 419, 164],
-    'C3': [802, 706, 1220, 880, 1, 418, 174],
-    'A2': [1220, 192, 1633, 363, 1, 413, 171],
-    'A6': [1218, 362, 1635, 543, 1, 417, 181],
-    'B4': [1221, 544, 1636, 711, 1, 415, 167],
-    'C4': [1218, 708, 1636, 882, 1, 418, 174],
-    'A7': [2007, 30, 2465, 194, 1, 458, 164],
-    'A4': [2007, 192, 2465, 360, 1, 458, 168],
-    'B1': [2008, 359, 2466, 539, 1, 458, 180],
-    'C1': [2007, 538, 2466, 707, 1, 459, 169],
-    'D1': [2008, 707, 2465, 882, 1, 457, 175],
-    'E2': [2007, 882, 2466, 1056, 1, 459, 174]
-}
+constants = Constants(1080, 720)
+constants.activate_parking()
+
+font1 = pygame.font.SysFont(None, constants.FONTSIZE)
 
 
-def dibujar_boton(superficie, rect, texto, color_base, color_hover):
+def dibujar_boton(superficie, rect, texto, color_base, color_hover, font):
     raton = pygame.mouse.get_pos()
     if rect.collidepoint(raton):
         color = color_hover
     else:
         color = color_base
-    pygame.draw.rect(superficie, color, rect, border_radius=15)
-    texto_render = font1.render(texto, True, Constants.WHITE)
-    superficie.blit(texto_render, (rect.x + 20, rect.y + 15))
+    pygame.draw.rect(superficie, color, rect, border_radius=constants.bottonY)
+    texto_render = font.render(texto, True, constants.WHITE)
+    superficie.blit(texto_render, (rect.x + constants.bottonX, rect.y + constants.bottonY))
  
 
 def create_rect_text(window, coordinates: Tuple[int], font, text: str = None,
                      occupied_spots=None, license: bool = True, enter="Enter"):
-    pygame.draw.rect(window, Constants.BRIGHT_RED, coordinates, border_radius=15)
+    pygame.draw.rect(window, constants.BRIGHT_RED, coordinates, border_radius=constants.bottonY)
     if license:
-        texto_render = font.render(f"{enter} license:\n{text}", True, Constants.WHITE)
+        texto_render = font.render(f"{enter} license:\n{text}", True, constants.WHITE)
     else: 
-        texto_render = font.render(f"Sitios libres: {20-len(occupied_spots)}/20", True, Constants.WHITE)
+        texto_render = font.render(f"Sitios libres: {20-len(occupied_spots)}/20", True, constants.WHITE)
     
     # Ajustar posición para que no se corte al saltar de línea
     lines = (f"{enter} license:", text) if license else (f"Sitios libres: {20-len(occupied_spots)}/20",)
-    y_offset = coordinates[1] + 10
+    y_offset = coordinates[1] + constants.tenY 
     for line in lines:
-        texto_render = font.render(line, True, Constants.WHITE)
-        window.blit(texto_render, (coordinates[0]+10, y_offset))
+        texto_render = font.render(line, True, constants.WHITE)
+        window.blit(texto_render, (coordinates[0]+constants.tenY, y_offset))
         y_offset += font.get_linesize()
-
 
 
 def check_limit(limit, centers):
@@ -78,20 +57,19 @@ def check_limit(limit, centers):
     return False
 
 
-def main(parking):
-    ventana = pygame.display.set_mode((Constants.WIN_WIDTH, Constants.WIN_HEIGHT))
+def main():
+    #constants.activate_constants()
+    #print(constants.CAR_HEIGHT_IMAGE)
+    parking = constants.parking.copy()
+    ventana = pygame.display.set_mode((constants.WIN_WIDTH, constants.WIN_HEIGHT))
     pygame.display.set_caption("Parking simulation")
     fondo = pygame.image.load("data_images/A1.png")
-    fondo = pygame.transform.scale(fondo, (Constants.WIN_WIDTH, Constants.WIN_HEIGHT))
+    fondo = pygame.transform.scale(fondo, (constants.WIN_WIDTH, constants.WIN_HEIGHT))
     coche_original = pygame.image.load("data_images/coche_mio_2.png")
-    coche_original = pygame.transform.scale(coche_original, (750, 450)) 
-    boton_rect = pygame.Rect(Constants.WIN_WIDTH - 200, 40, 150, 70) 
+    coche_original = pygame.transform.scale(coche_original, (constants.original_carX, constants.original_carY)) 
+    boton_rect = pygame.Rect(*constants.exit_botton_coordinates) 
 
-    car_worker = CarWorker()
-    car_worker.create_process()
-    car_worker.activate_deamon()
-    car_worker.start_process()
-
+    car_detector = CarDetector(model_path=constants.CAR_AI_MODEL_FILE)
     license_plate1 = LicensePlateDetector()
     license_plate2 = LicensePlateDetector()
 
@@ -100,26 +78,24 @@ def main(parking):
     texto_license2 = ""
     itera = 0
     car_results = []
-    x, y = 200, Constants.WIN_HEIGHT-120
     clock = pygame.time.Clock()
+    x, y = constants.x, constants.y 
 
-    pygame.draw.rect(fondo, Constants.GREEN, (Constants.X1,Constants.Y1,Constants.X2-Constants.X1,Constants.Y2-Constants.Y1), 5)
-    pygame.draw.rect(fondo, Constants.GREEN, (Constants.Z1,Constants.W1,Constants.Z2-Constants.Z1,Constants.W2-Constants.W1), 5)
+    pygame.draw.rect(fondo, constants.GREEN, (constants.X1,constants.Y1,constants.X2-constants.X1,constants.Y2-constants.Y1), 5)
+    pygame.draw.rect(fondo, constants.GREEN, (constants.Z1,constants.W1,constants.Z2-constants.Z1,constants.W2-constants.W1), 5)
 
-    pygame.draw.rect(fondo, Constants.BRIGHT_RED, (Constants.SX1, Constants.SY1, Constants.SX2-Constants.SX1, Constants.SY2-Constants.SY1), 5) 
-    pygame.draw.rect(fondo, Constants.BRIGHT_RED, (Constants.SSX1, Constants.SSY1, Constants.SSX2-Constants.SSX1, Constants.SSY2-Constants.SSY1), 5) 
+    pygame.draw.rect(fondo, constants.BRIGHT_RED, (constants.SX1, constants.SY1, constants.SX2-constants.SX1, constants.SY2-constants.SY1), 5) 
+    pygame.draw.rect(fondo, constants.BRIGHT_RED, (constants.SSX1, constants.SSY1, constants.SSX2-constants.SSX1, constants.SSY2-constants.SSY1), 5) 
                         
     
     while True:
         for evento in pygame.event.get():
             if evento.type == pygame.QUIT:
-                car_worker.stop()
                 pygame.quit()
                 sys.exit()
 
             if evento.type == pygame.MOUSEBUTTONDOWN and evento.button == 1:
                 if boton_rect.collidepoint(evento.pos):
-                    car_worker.stop()
                     pygame.quit()
                     sys.exit()   
 
@@ -128,65 +104,59 @@ def main(parking):
         # teclas presionadas
         teclas = pygame.key.get_pressed()
         if teclas[pygame.K_a]:
-            Constants.ANGLE += 3  # girar a la izquierda
+            constants.ANGLE += 3  # girar a la izquierda
         if teclas[pygame.K_d]:
-            Constants.ANGLE -= 3  # girar a la derecha
+            constants.ANGLE -= 3  # girar a la derecha
         if teclas[pygame.K_s]:
-            x += Constants.VELOCITY * math.cos(math.radians(-Constants.ANGLE))
-            y += Constants.VELOCITY * math.sin(math.radians(-Constants.ANGLE))
+            x += constants.VELOCITY * math.cos(math.radians(-constants.ANGLE))
+            y += constants.VELOCITY * math.sin(math.radians(-constants.ANGLE))
         if teclas[pygame.K_w]:
-            x -= Constants.VELOCITY * math.cos(math.radians(-Constants.ANGLE))
-            y -= Constants.VELOCITY * math.sin(math.radians(-Constants.ANGLE))
+            x -= constants.VELOCITY * math.cos(math.radians(-constants.ANGLE))
+            y -= constants.VELOCITY * math.sin(math.radians(-constants.ANGLE))
 
-        # rotar coche
-        coche_rotado = pygame.transform.rotate(coche_original, Constants.ANGLE)
+        #2500 rotar coche
+        coche_rotado = pygame.transform.rotate(coche_original, constants.ANGLE)
         rect = coche_rotado.get_rect(center=(x, y))
         ventana.blit(coche_rotado, rect.topleft)
 
         wind_piece = pygame.surfarray.array3d(ventana)
         wind_piece = np.transpose(wind_piece, (1, 0, 2))
         wind_piece = cv2.cvtColor(wind_piece, cv2.COLOR_BGR2RGB)
-        wind_piece_license1 = wind_piece[Constants.Y1:Constants.Y2,Constants.X1:Constants.X2]
-        wind_piece_license2 = wind_piece[Constants.W1:Constants.W2,Constants.Z1:Constants.Z2]
+        wind_piece_license1 = wind_piece[constants.Y1:constants.Y2,constants.X1:constants.X2]
+        wind_piece_license2 = wind_piece[constants.W1:constants.W2,constants.Z1:constants.Z2]
         
-        if itera % 20 == 0 and check_limit((Constants.SX1,Constants.SY1,Constants.SX2,Constants.SY2),car_results):
+        if itera % 40 == 0 and check_limit((constants.SX1,constants.SY1,constants.SX2,constants.SY2),car_results):
             license_text1, license_frame1 = license_plate1.get_license_plate(wind_piece_license1, enter=True)
             if license_text1:
                 texto_license1 = license_text1
 
-        if itera % 30 == 0 and check_limit((Constants.SSX1,Constants.SSY1,Constants.SSX2,Constants.SSY2),car_results):
+        if itera % 40 == 0 and check_limit((constants.SSX1,constants.SSY1,constants.SSX2,constants.SSY2),car_results):
             license_text2, license_frame2 = license_plate2.get_license_plate(wind_piece_license2, enter=False)
             if license_text2:
                 texto_license2 = license_text2
         
-        if itera % 20 == 0 and car_worker.frame_queue_empty():  
-            car_worker.put_frames(wind_piece)
-
-        if itera % 15 == 0 and not car_worker.results_queue_empty():
-            car_results = car_worker.get_results()
+        if itera % 40 == 0:
+            car_results = car_detector.detect_car(wind_piece, constants) 
             sitios_ocupados, parking = update_parking(car_results, parking)
         
-        for center in car_results:
-            pygame.draw.circle(ventana, color=Constants.BRIGHT_RED, center=center, radius=2)
-
-        create_rect_text(ventana, Constants.LICENSE1_COORDINATES, font1, text=texto_license1) 
-        create_rect_text(ventana, Constants.LICENSE2_COORDINATES, font1, text=texto_license2) 
+        create_rect_text(ventana, constants.LICENSE1_COORDINATES, font1, text=texto_license1) 
+        create_rect_text(ventana, constants.LICENSE2_COORDINATES, font1, text=texto_license2) 
 
         if sitios_ocupados is not None:
-            create_rect_text(ventana, Constants.CAR_COORDINATES, font1, occupied_spots=sitios_ocupados, license=False)
+            create_rect_text(ventana, constants.CAR_COORDINATES, font1, occupied_spots=sitios_ocupados, license=False)
 
         itera+=1
 
         for value in parking.values():
             if value[4]: 
-                pygame.draw.rect(ventana, Constants.GREEN, (value[0], value[1], value[-2], value[-1]), 5)
+                pygame.draw.rect(ventana, constants.GREEN, (value[0], value[1], value[-2], value[-1]), 5)
             else:
-                pygame.draw.rect(ventana, Constants.RED, (value[0], value[1], value[-2], value[-1]), 5)
+                pygame.draw.rect(ventana, constants.RED, (value[0], value[1], value[-2], value[-1]), 5)
         
         # dibujar botón
-        dibujar_boton(ventana, boton_rect, "Exit", Constants.RED, Constants.BRIGHT_RED)
+        dibujar_boton(ventana, boton_rect, "Exit", constants.RED, constants.BRIGHT_RED, font1)
         pygame.display.update()
         clock.tick(30)
 
 if __name__ == "__main__":
-    main(parking)
+    main()

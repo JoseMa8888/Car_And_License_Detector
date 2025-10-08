@@ -8,7 +8,7 @@ class CarDetector():
     def __init__(self, model_path):
         self.__model = YOLO(model_path)
 
-    def detect_car(self, frame):
+    def detect_car(self, frame, constants: Constants) -> List[Tuple[int, int]]:
         """
         params:
             frame: capture of a video frame.
@@ -17,8 +17,8 @@ class CarDetector():
             A list of elements, each element contains their center: (x,y)
         """
         data: List[Tuple[int, int]] = []
-        frame_resized = cv2.resize(frame, (Constants.CAR_WIDTH_IMAGE, Constants.CAR_HEIGHT_IMAGE))  # Resizing for better precition
-        results = self.__model(frame_resized, verbose=False, conf=0.5) # Execute the model
+        frame_resized = cv2.resize(frame, (constants.CAR_WIDTH_IMAGE, constants.CAR_HEIGHT_IMAGE))  # Resizing for better precition
+        results = self.__model(frame_resized, device="cpu",verbose=False, conf=0.5) # Execute the model
 
         for result in results:
         
@@ -28,12 +28,14 @@ class CarDetector():
                 for box in boxes:
                     x1, y1, x2, y2 = box.xyxy[0]
                     x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
-                    x1 = int((x1 * Constants.WIN_WIDTH) / Constants.CAR_WIDTH_IMAGE)
-                    y1 = int((y1 * Constants.WIN_HEIGHT) / Constants.CAR_HEIGHT_IMAGE)
-                    x2 = int((x2 * Constants.WIN_WIDTH) / Constants.CAR_WIDTH_IMAGE)
-                    y2 = int((y2 * Constants.WIN_HEIGHT) / Constants.CAR_HEIGHT_IMAGE)
+                    x1 = int((x1 * constants.WIN_WIDTH) / constants.CAR_WIDTH_IMAGE)
+                    y1 = int((y1 * constants.WIN_HEIGHT) / constants.CAR_HEIGHT_IMAGE)
+                    x2 = int((x2 * constants.WIN_WIDTH) / constants.CAR_WIDTH_IMAGE)
+                    y2 = int((y2 * constants.WIN_HEIGHT) / constants.CAR_HEIGHT_IMAGE)
                     centerx = (x1+x2)//2
                     centery = (y1+y2)//2
                     data.append((centerx,centery))
 
         return data
+    
+

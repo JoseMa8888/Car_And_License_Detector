@@ -1,6 +1,5 @@
 import cv2
 import easyocr
-from sort import *
 import mysql.connector 
 from datetime import timedelta
 import datetime
