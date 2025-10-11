@@ -1,15 +1,25 @@
-# 🚗 Parking Lot Management System
+# 🚗 Parking Lot Management System v1.0
 
-A comprehensive computer vision-based parking management system that combines vehicle detection and license plate recognition to automate parking lot operations.
+A basic computer vision-based parking management system that combines vehicle detection and license plate recognition to automate parking lot operations.
 
 ## 📖 Project Overview
 
-This innovative system simulates a smart parking lot environment where:
+This system simulates a smart parking lot environment where:
 
 - **Vehicle Detection**: Uses YOLO-based AI models to detect cars in real-time
-- **License Plate Recognition**: Implements OCR technology to read and process license plates
-- **Database Integration**: Stores vehicle information and manages parking spot occupancy
-- **Interactive Simulation**: Provides a PyGame-based visual interface to demonstrate the system
+- **License Plate Recognition**: Implements OCR technology to read and process license plates 
+- **Database Integration**: Stores vehicle information and manages parking spot occupancy (Currently not operable)
+- **Interactive Simulation**: Provides a PyGame-based visual interface to demonstrate the system 
+## 📸 Images
+<p align="center" float="left">
+  <img src="images/init.png" width="389" />
+  <img src="images/detection_car.png" width="389" />
+</p>
+
+<p align="center" float="left">
+  <img src="images/detection_license1.png" width="389" />
+  <img src="images/detection_license2.png" width="380" />
+</p>
 
 ## 🎯 Key Features
 
@@ -21,18 +31,33 @@ This innovative system simulates a smart parking lot environment where:
 ### 📝 License Plate Recognition
 - Multi-directional license plate reading (entrance/exit)
 - EasyOCR integration for robust text recognition
-- Database validation and management
-
-### 🗄️ Database Management
-- MySQL integration for persistent data storage
-- Automated parking spot tracking
-- Time-based billing and occupancy management
 
 ### 🎮 Interactive Simulation
 - Real-time parking lot visualization
 - Vehicle movement simulation
 - Dynamic spot occupancy updates
 - User-friendly interface with exit controls
+
+## 📦 Installation
+
+1. Clone the repository:
+```bash
+git clone https://github.com/JoseMa8888/Car_And_License_Detector.git
+cd your-repo
+```
+2. Create your virtual environment using conda:
+```bash
+conda create --name conda_venv python=3.9
+```
+3. Install dependencies
+```bash
+conda activate conda_venv
+pip install -r requirements.txt
+```
+4. Launch the system
+```bash
+python3 main.py
+```
 
 ## 🛠️ Technical Architecture
 
